@@ -1,0 +1,16 @@
+# Points retrieval-agent and k8s-agent at the in-cluster chat model instead
+# of the placeholder OpenAI key in default-model-config.
+# llama-server needs no real API key, but ModelConfig requires apiKeySecret
+# to be set -- reusing kagent-openai (its 14-char placeholder is never read).
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: local-chat-model
+  namespace: kagent
+spec:
+  provider: OpenAI
+  model: qwen2.5-3b-instruct
+  apiKeySecret: kagent-openai
+  apiKeySecretKey: OPENAI_API_KEY
+  openAI:
+    baseUrl: http://llama-cpp-chat.llama-cpp.svc.cluster.local:8082/v1
