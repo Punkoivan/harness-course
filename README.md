@@ -7,6 +7,8 @@ Notes, proofs, and everything done during the harness instrumentation course
 
 - `notes/` — course notes
 - `proofs/` — evidence that a task/lab was completed (recordings, screenshots, logs)
+- `docs/adr/` — architecture decisions made during the course
+- `docs/todo/` — implementation checklists that follow from an ADR
 
 ## Log
 
@@ -18,3 +20,15 @@ Notes, proofs, and everything done during the harness instrumentation course
   [**velesha**](https://github.com/Punkoivan/velesha) — a personal assistant
   with memory over home/life data (HA, Jellyfin, notes), voice + avatar
   planned. Further work on that idea happens there, with ADRs.
+- **2026-09-18** — course task: ADR + ToDo for running a model in `abox` as
+  a sidecar vs. via **llm-d**. Researched llm-d's actual requirements
+  first: it's a distributed-inference control plane over vLLM, needs
+  datacenter accelerators (NVIDIA L4/A100/H100+, AMD MI250X+, TPU v5e+),
+  80+ cores and 500GiB+ RAM per node, fast interconnect — none of which a
+  laptop KinD cluster has. Decision: sidecar (llama.cpp) now, llm-d
+  revisited only if/when real accelerator hardware is available — see
+  [ADR-0001](docs/adr/0001-model-serving-sidecar-vs-llmd.md) and the
+  [implementation checklist](docs/todo/0001-sidecar-model-serving.md)
+  (not yet implemented). Notable side-finding: llm-d has a documented
+  integration with `agentgateway` (already in `abox`) via the Gateway API
+  Inference Extension, so that's the on-ramp when it's time to revisit.
