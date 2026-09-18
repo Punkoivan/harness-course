@@ -37,3 +37,12 @@ Notes, proofs, and everything done during the harness instrumentation course
   Notable side-finding: llm-d has a documented
   integration with `agentgateway` (already in `abox`) via the Gateway API
   Inference Extension, so that's the on-ramp when it's time to revisit.
+- **2026-09-18** — course task: ADR + ToDo for the text embedding model
+  choice. Already implemented in practice while building `velesha`:
+  `bge-m3` (multilingual, handles Ukrainian) served via `llama.cpp`'s
+  `llama-server` in `--embedding` mode, chosen over Ollama for one fewer
+  moving part and direct batch-size control. See
+  [ADR-0002](docs/adr/0002-embedding-model-choice.md) (includes the
+  llama.cpp-vs-Ollama comparison table) and the
+  [run-it instructions](docs/todo/0002-run-embedding-model-locally.md),
+  verified callable (`dim: 1024` on a test query).
