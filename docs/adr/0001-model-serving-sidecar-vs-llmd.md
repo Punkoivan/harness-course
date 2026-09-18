@@ -30,28 +30,40 @@ Research, CoreWeave, NVIDIA, and others. Core architecture: disaggregated
 prefill/decode pods (scaled independently), KV-cache-aware routing,
 hierarchical KV-cache offload, wide expert-parallelism for MoE models.
 
-Documented hardware requirements (llm-d.ai infrastructure docs):
+Documented hardware requirements (llm-d.ai infrastructure / accelerators
+docs — corrected 2026-09-18 after this ADR initially cited a stale v0.7
+doc snapshot that omitted CPU support entirely; see the follow-up log
+entry):
 - Supported accelerators: NVIDIA L4/A100/H100/H200/B200+, AMD MI250X+,
-  Google TPU v5e/v6e+ — **no CPU-only path, no integrated-GPU support
-  documented anywhere**.
-- Baseline per node: **80+ cores, 500GiB+ memory, PCIe 5+**, plus
-  high-speed interconnect (NVLink/InfiniBand/RoCE) for multi-host setups.
+  Google TPU v5e/v6e+, **and CPU (x86_64)** — llm-d does document a
+  CPU-only inference path.
+- **CPU path specifics**: "4th Gen Intel Xeon (Sapphire Rapids) or later,
+  or equivalent AMD processors. Each replica requires a minimum of
+  **64 CPU cores and 64GB RAM**." That floor is per replica, and `abox`'s
+  entire laptop host has 16 cores / 30GB total — still well short, even
+  before accounting for KinD/Docker/other workloads sharing the box.
+- GPU-node baseline (still applies when using accelerators): 80+ cores,
+  500GiB+ memory, PCIe 5+, high-speed interconnect (NVLink/InfiniBand/RoCE)
+  for multi-host setups.
 - Quickstart's default example: 8 replicas of a 32B model across NVIDIA
   GPUs; minimum cited cloud instance is a `g6e.12xlarge` (4×L40S 48GB).
 - Kubernetes 1.29+ (1.33+ recommended), cert-manager, Gateway API CRDs
-  v1.3.0+, NVIDIA GPU Operator, cluster-admin — and explicitly **no
-  service mesh** (Istio CRDs conflict).
+  v1.3.0+, NVIDIA GPU Operator (for the GPU path), cluster-admin — and
+  explicitly **no service mesh** (Istio CRDs conflict).
 - Latest release: v0.9 (2026-08-28), CNCF sandbox, pre-1.0, explicitly
   framed as proving production/datacenter scale — not lightweight/dev-scale
   maturity.
 
-None of this matches a laptop KinD cluster with an integrated GPU. Every
-documented requirement (accelerator class, per-node core/RAM floor, fast
-interconnect, multi-pod disaggregated topology) assumes a multi-node
-datacenter GPU cluster. Installing the Helm charts in KinD and pointing
-them at a toy CPU vLLM pod would technically "run," but would exercise none
-of llm-d's actual value (disaggregation, GPU-aware scheduling, KV-cache
-routing) — not a real test of the technology, just theater.
+None of this matches a laptop KinD cluster with an integrated GPU — the
+GPU path is out for lack of a discrete accelerator, and the documented
+CPU path's 64-core/64GB-per-replica floor exceeds the entire host (16
+cores/30GB), not just what a single pod could claim. Installing the Helm
+charts in KinD and pointing them at an undersized CPU vLLM pod would
+technically "run" (nothing stops you deploying below the documented
+minimum), but would exercise none of llm-d's actual value (disaggregation,
+GPU-aware scheduling, KV-cache routing) and wouldn't be a supported or
+representative configuration — not a real test of the technology, just
+theater.
 
 One finding worth keeping for later: llm-d has a **documented, named
 integration with agentgateway** (already running in `abox`) via the

@@ -22,13 +22,18 @@ Notes, proofs, and everything done during the harness instrumentation course
   planned. Further work on that idea happens there, with ADRs.
 - **2026-09-18** — course task: ADR + ToDo for running a model in `abox` as
   a sidecar vs. via **llm-d**. Researched llm-d's actual requirements
-  first: it's a distributed-inference control plane over vLLM, needs
-  datacenter accelerators (NVIDIA L4/A100/H100+, AMD MI250X+, TPU v5e+),
-  80+ cores and 500GiB+ RAM per node, fast interconnect — none of which a
-  laptop KinD cluster has. Decision: sidecar (llama.cpp) now, llm-d
-  revisited only if/when real accelerator hardware is available — see
+  first: it's a distributed-inference control plane over vLLM, with GPU
+  (NVIDIA/AMD-datacenter/TPU) and CPU accelerator paths — the CPU path
+  needs 64+ cores and 64GB+ RAM **per replica**, which the entire laptop
+  host (16 cores/30GB) doesn't clear, let alone a single pod's share of
+  it. Decision: sidecar (llama.cpp) now, llm-d revisited only if/when
+  hardware actually clears one of its documented minimums — see
   [ADR-0001](docs/adr/0001-model-serving-sidecar-vs-llmd.md) and the
   [implementation checklist](docs/todo/0001-sidecar-model-serving.md)
-  (not yet implemented). Notable side-finding: llm-d has a documented
+  (not yet implemented). Correction 2026-09-18: an earlier pass of this
+  ADR cited a stale v0.7 doc snapshot that missed llm-d's CPU support
+  entirely — fixed after being challenged on it; the actual per-replica
+  CPU floor still rules it out here, but for the right reason now.
+  Notable side-finding: llm-d has a documented
   integration with `agentgateway` (already in `abox`) via the Gateway API
   Inference Extension, so that's the on-ramp when it's time to revisit.
