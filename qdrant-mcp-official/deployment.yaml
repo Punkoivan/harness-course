@@ -1,0 +1,71 @@
+# Official qdrant MCP server (https://github.com/qdrant/mcp-server-qdrant),
+# unmodified upstream Dockerfile, deployed by hand (Deployment + Service)
+# and registered as a RemoteMCPServer rather than kagent's own MCPServer CRD:
+# the official image runs its own SSE HTTP server, it isn't a stdio process
+# for kagent to wrap the way the custom qdrant-mcp Go server is.
+# See docs/adr/0004-official-qdrant-mcp.md.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: official-qdrant-mcp
+  namespace: kagent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: official-qdrant-mcp
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: official-qdrant-mcp
+    spec:
+      containers:
+        - name: mcp-server-qdrant
+          image: official-qdrant-mcp:0.8.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: FASTMCP_SERVER_HOST
+              value: "0.0.0.0"
+            - name: QDRANT_URL
+              value: "http://qdrant.qdrant:6333"
+            - name: COLLECTION_NAME
+              value: "k8s_manifests_mcp"
+            # EMBEDDING_MODEL left at the image's own default
+            # (sentence-transformers/all-MiniLM-L6-v2) -- that's the point.
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          readinessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: official-qdrant-mcp
+  namespace: kagent
+spec:
+  selector:
+    app.kubernetes.io/name: official-qdrant-mcp
+  ports:
+    - port: 8000
+      targetPort: 8000
+---
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: official-qdrant-mcp
+  namespace: kagent
+spec:
+  description: "Official qdrant MCP server (qdrant/mcp-server-qdrant) -- qdrant-store / qdrant-find tools, FastEmbed all-MiniLM-L6-v2 embeddings."
+  url: http://official-qdrant-mcp.kagent.svc.cluster.local:8000/sse
+  protocol: SSE
