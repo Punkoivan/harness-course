@@ -62,3 +62,33 @@ Notes, proofs, and everything done during the harness instrumentation course
   confirming the sidecar pattern end-to-end inside the cluster. See
   [ToDo-0001](docs/todo/0001-sidecar-model-serving.md) for the full
   writeup, including what broke.
+- **2026-09-19** — course tasks 3-8, all in `abox`: local chat model
+  (Qwen2.5-3B) wired to `retrieval-agent`/`k8s-agent`
+  ([ADR-0003](docs/adr/0003-chat-model-for-kagent-agents.md)); official
+  qdrant MCP added as a second toolset
+  ([ADR-0004](docs/adr/0004-official-qdrant-mcp.md)); then the actual
+  point of task 8 — compared **direct** indexing (a script,
+  `sentence-transformers` straight to Qdrant) against **agentic**
+  indexing (the same manifests, via `retrieval-agent` calling the
+  official MCP's `qdrant-store`). Direct: 14/14 correct. Agentic: 2/14
+  completed inside a realistic turn budget, and neither of those 2 was
+  fully correct (one stored the literal string `"the raw YAML provided"`
+  instead of real content, the other dropped its metadata) — the other 12
+  never finished, the 3B CPU model needed thousands of tokens and multiple
+  minutes per turn for what should be one tool call. Retrieval quality
+  followed directly: direct indexing's top hits were semantically correct
+  for all 5 test queries (scores 0.2-0.43); agentic indexing's were wrong
+  for all 5 (scores 0.05-0.22, one negative). Full writeup and the actual
+  numbers in ADR-0004's Results section.
+  
+  Also had to redo the deployment approach partway through: patching
+  Flux-managed resources with `kubectl` kept getting silently reverted by
+  the 2-minute reconciliation loop (traced to `retrieval-agent` losing
+  its model-config patch mid-run and reverting live A2A calls to the
+  broken default). Fixed properly — pointed this fork's own CI at its own
+  `ghcr.io` package (hit and fixed a real bug along the way: `github.com`
+  repo paths preserve case, `ghcr.io` requires lowercase, so
+  `Punkoivan/abox` broke the OCI push until the workflow lowercased it
+  explicitly) and repointed the cluster's `ResourceSetInputProvider` at
+  that fork via `oci_registry` in `bootstrap/variables.tf` — instead of
+  continuing to fight the upstream-tracking GitOps loop by hand.

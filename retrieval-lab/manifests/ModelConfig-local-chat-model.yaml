@@ -1,0 +1,13 @@
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: local-chat-model
+  namespace: kagent
+spec:
+  apiKeySecret: kagent-openai
+  apiKeySecretKey: OPENAI_API_KEY
+  model: qwen2.5-3b-instruct
+  openAI:
+    apiFormat: chatCompletions
+    baseUrl: http://llama-cpp-chat.llama-cpp.svc.cluster.local:8082/v1
+  provider: OpenAI

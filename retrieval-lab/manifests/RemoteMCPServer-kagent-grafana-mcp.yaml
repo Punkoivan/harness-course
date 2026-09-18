@@ -1,0 +1,12 @@
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: kagent-grafana-mcp
+  namespace: kagent
+spec:
+  description: Grafana MCP server
+  protocol: STREAMABLE_HTTP
+  sseReadTimeout: 5m0s
+  terminateOnClose: true
+  timeout: 30s
+  url: http://kagent-grafana-mcp.kagent:8000/mcp

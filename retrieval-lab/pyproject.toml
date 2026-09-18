@@ -1,0 +1,14 @@
+[project]
+name = "retrieval-lab"
+version = "0.1.0"
+description = "Direct vs agentic indexing comparison (course task 6-8, ADR-0004)"
+readme = "README.md"
+authors = [
+    { name = "Ivan Punko", email = "punkoivan@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "qdrant-client>=1.19.1",
+    "requests>=2.34.2",
+    "sentence-transformers>=6.1.0",
+]

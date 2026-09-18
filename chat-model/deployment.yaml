@@ -21,6 +21,11 @@ spec:
         - name: llama-server
           image: velesha-chat-sidecar:qwen2.5-3b
           imagePullPolicy: IfNotPresent
+          # --parallel 1: llama-server's default (4) splits the -c 8192
+          # context into 4x 2048-token slots, so any single request over
+          # ~2048 tokens fails with "failed to find free space in the KV
+          # cache". Single-user workload here, so give it all 8192.
+          args: ["--parallel", "1"]
           ports:
             - containerPort: 8082
           resources:

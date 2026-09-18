@@ -79,6 +79,77 @@ packaging story before writing one — the answer is usually already there.
   HTTP/SSE server by design. Forcing it through `MCPServer`'s stdio
   wrapping would fight the image rather than use it as built.
 
-## Results (task 8 — added after steps 6-7)
+## Results (task 8)
 
-See the ingest/comparison run below once complete.
+**Setup**: 14 manifests (this cluster's own `Agent`/`ModelConfig`/
+`MCPServer`/`RemoteMCPServer` custom resources — the same objects
+`retrieval-agent`'s own prompt treats as canonical ingest targets),
+embedded with the same model both ways
+(`sentence-transformers/all-MiniLM-L6-v2`), into two collections:
+
+- `k8s_manifests_direct` — `retrieval-lab/index_direct.py`, a plain script
+  calling `sentence-transformers` directly and writing to Qdrant. No
+  agent, no LLM, no tool call.
+- `k8s_manifests_mcp` — `retrieval-lab/ingest_via_agent.py`, driving
+  `retrieval-agent` (Qwen2.5-3B, CPU) via A2A `message/send`, one manifest
+  per turn, instructed to call the official server's `qdrant-store` tool.
+
+**Direct indexing: 14/14 succeeded**, correctly, in well under a minute
+total (embedding 14 short YAML docs on CPU is fast; no LLM in the loop).
+
+**Agentic indexing: 2/14 completed within a 300s-per-turn budget, and
+neither of those 2 was fully correct.** The other 12 were killed by the
+client timeout mid-generation and never called the tool at all — llama.cpp
+server logs show the model still generating at the 300s mark, past 3500-
+7000 tokens of output at ~2.4 tokens/second, for what should be a single
+tool call plus a short confirmation. The generation was cleanly cancelled
+server-side each time (`W srv stop: cancel task`), not stuck or crashed —
+just far too slow and far too verbose for the turn budget.
+
+Of the 2 that did complete:
+- `argo-rollouts-conversion-agent`: metadata correct
+  (`{"kind": "Agent", "name": "argo-rollouts-conversion-agent",
+  "namespace": "kagent"}`), but the stored `document` field is the
+  **literal string `"the raw YAML provided"`** — the model referred to
+  the content instead of passing it, so nothing about that manifest is
+  actually retrievable from what got stored.
+- `helm-agent`: `document` correctly holds the full raw YAML, but
+  `metadata` is `null` — the second tool argument was dropped.
+
+So across 14 attempts: 0 fully-correct agentic stores, 2 partially-correct,
+12 that never completed in a realistic turn.
+
+**Retrieval quality**, 5 representative queries against each collection
+(`retrieval-lab/compare.py`, same embedding model both sides, note
+`k8s_manifests_mcp` uses a FastEmbed-named vector
+`fast-all-minilm-l6-v2`, not the default anonymous one
+`index_direct.py`'s collection uses — had to look that up via
+`GET /collections/k8s_manifests_mcp` to query it at all):
+
+| Query | Direct (top score, top hit) | Agentic (top score, top hit) |
+|---|---|---|
+| which agent talks to a graph database | 0.361, `retrieval-agent` (correct — it's the Neo4j agent) | 0.219, helm-agent's raw YAML (wrong) |
+| model config for a local llama.cpp server | 0.304, `kagent-grafana-mcp` (topically close) | 0.120, `argo-rollouts-conversion-agent` (wrong) |
+| remote MCP server using SSE transport | 0.355, `official-qdrant-mcp` (exactly correct — it IS the SSE server) | 0.096, `argo-rollouts-conversion-agent` (wrong) |
+| agent that manages Grafana dashboards | 0.432, `observability-agent` (correct) | 0.211, helm-agent's YAML (wrong) |
+| object with qdrant-store/qdrant-find tools | 0.391, `retrieval-agent` (exactly correct) | 0.210, `argo-rollouts-conversion-agent` (wrong) |
+
+Direct indexing's scores (0.2-0.43) and top hits are semantically right
+for every query. Agentic indexing's scores are uniformly lower (0.05-0.22,
+one query even scored a *negative* -0.100 on its second hit) and every
+single top hit is wrong — unsurprising with only 2 points in the
+collection, one of which carries no real content at all. This isn't
+"agentic retrieval is somewhat worse" — with this model, on this
+hardware, under a realistic turn budget, it produced a collection that
+cannot answer the questions it was populated to answer.
+
+**Conclusion**: the bottleneck was never the official MCP server, the
+tool schema, or the embedding model — all three worked correctly on the
+2 turns that finished. It was the **chat model's generation speed and
+verbosity** (see ADR-0003: 3B, Q4_K_M, CPU-only, chosen under a ~6.7GB
+RAM ceiling) colliding with a per-turn budget realistic for interactive
+use. A bigger/faster model, or a task-specific fine-tune, or simply more
+patience per turn (uncapped timeout, minutes instead of seconds) would
+likely close most of this gap — this result is a statement about *this*
+model on *this* hardware under *these* constraints, not a general verdict
+on agentic vs. direct indexing.

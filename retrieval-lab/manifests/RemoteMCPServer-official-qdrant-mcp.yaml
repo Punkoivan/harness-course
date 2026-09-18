@@ -1,0 +1,11 @@
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: official-qdrant-mcp
+  namespace: kagent
+spec:
+  description: Official qdrant MCP server (qdrant/mcp-server-qdrant) -- qdrant-store / qdrant-find tools, FastEmbed all-MiniLM-L6-v2 embeddings.
+  protocol: SSE
+  terminateOnClose: true
+  timeout: 30s
+  url: http://official-qdrant-mcp.kagent.svc.cluster.local:8000/sse
