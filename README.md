@@ -46,3 +46,19 @@ Notes, proofs, and everything done during the harness instrumentation course
   llama.cpp-vs-Ollama comparison table) and the
   [run-it instructions](docs/todo/0002-run-embedding-model-locally.md),
   verified callable (`dim: 1024` on a test query).
+- **2026-09-18** — implemented ADR-0001's sidecar plan for real: a
+  standalone `Deployment` (`sidecar/`) in `abox` with `bge-m3` served by
+  `llama-server` as a second container next to a demo `app` container.
+  Built a multi-stage Docker image (llama.cpp CPU build + model baked in,
+  ~1GB), loaded into all 3 KinD nodes with `kind load docker-image`, no
+  registry needed. First attempt crash-looped —
+  `libllama-common.so.0: cannot open shared object file` — because the
+  runtime stage only copied `.so`s matching `libggml*`/`libllama*` by
+  glob, missing several llama.cpp produces (`libmtmd.so`,
+  `libllama-server-impl.so`, etc.); fixed by copying the whole
+  `build/bin/*.so*` glob instead of guessing. After the fix: pod `2/2
+  Running`, `kubectl exec`'d into the `app` container and called
+  `POST localhost:8081/embedding` — got back a real 1024-dim vector,
+  confirming the sidecar pattern end-to-end inside the cluster. See
+  [ToDo-0001](docs/todo/0001-sidecar-model-serving.md) for the full
+  writeup, including what broke.

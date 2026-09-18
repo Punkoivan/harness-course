@@ -112,4 +112,6 @@ InferencePool," not a new gateway or a rip-and-replace.
   already be stale by the time real hardware is available.
 
 See `docs/todo/0001-sidecar-model-serving.md` for the implementation
-checklist.
+checklist — **implemented and verified 2026-09-18**: sidecar deployed in
+`abox`, embedding endpoint confirmed callable from the pod's main
+container over `localhost`.

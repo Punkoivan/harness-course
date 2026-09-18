@@ -1,0 +1,59 @@
+# Sidecar model-serving demo — see docs/adr/0001-model-serving-sidecar-vs-llmd.md
+# and docs/todo/0001-sidecar-model-serving.md.
+#
+# Standalone Deployment for the course exercise (not wired into Flux/releases
+# — scope decision recorded in the ToDo). The "app" container stands in for
+# whatever would actually call the embedding endpoint; it just sleeps and
+# is used for the exec-in verification step.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: embed-sidecar-demo
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: embed-sidecar-demo
+  template:
+    metadata:
+      labels:
+        app: embed-sidecar-demo
+    spec:
+      containers:
+        - name: app
+          image: busybox:1.36
+          command: ["sleep", "infinity"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 64Mi
+
+        - name: llama-embed
+          image: velesha-embed-sidecar:bge-m3
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
+          resources:
+            requests:
+              cpu: "2"
+              memory: 2Gi
+            limits:
+              cpu: "4"
+              memory: 4Gi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 3
+            periodSeconds: 3
+            failureThreshold: 20
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 15
