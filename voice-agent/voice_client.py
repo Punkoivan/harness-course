@@ -73,7 +73,11 @@ def ask_agent(text: str) -> str:
             }
         },
     }
-    resp = requests.post(AGENT_URL, json=msg, timeout=300)
+    # Delegation (voice-router -> k8s-agent -> back) means 2-3+ full LLM
+    # turns on a shared, single-slot (--parallel 1) CPU model -- each turn
+    # alone has taken 100-230s in practice (see ADR-0005/ADR-0003). 300s
+    # wasn't enough for the full chain; give it real headroom.
+    resp = requests.post(AGENT_URL, json=msg, timeout=1200)
     resp.raise_for_status()
     data = resp.json()
     try:
@@ -121,7 +125,8 @@ def main() -> None:
             continue
         print(f"You said: {text}")
 
-        print("Asking voice-router (may take a while on CPU)...")
+        print("Asking voice-router... if this delegates to another agent,")
+        print("expect several minutes (shared single-slot CPU model, ADR-0005).")
         reply = ask_agent(text)
         print(f"Agent: {reply}\n")
 
