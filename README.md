@@ -92,3 +92,25 @@ Notes, proofs, and everything done during the harness instrumentation course
   explicitly) and repointed the cluster's `ResourceSetInputProvider` at
   that fork via `oci_registry` in `bootstrap/variables.tf` — instead of
   continuing to fight the upstream-tracking GitOps loop by hand.
+- **2026-09-22** — task 1 (own agentic-memory corpus) and task 5 (voice →
+  A2A delegation), on `feat/xray-memory`. Built `xray-memory` from private
+  source (repo access confirmed) after the public server image turned out
+  to be a CGO-disabled build that can only serve pre-built snapshots, never
+  build new ones — indexed `velesha` (own repo) with a self-generated age
+  key, deployed alongside `den-vasyliev`'s still-undecryptable maps without
+  disturbing them. Along the way: fixed a directory-walker gap (vendored
+  `tools/llama.cpp` got parsed as 33k extra nodes until stashed aside — no
+  `.gitignore` awareness, only a hardcoded skip-list), a hardcoded 30s
+  embedding timeout that needed more embedder CPU (Flux reverted the first
+  attempt — suspended `releases` again), a port collision with an unrelated
+  session's process on the "default" port, and an `RWO`-PVC chicken-and-egg
+  (crash-looping pod can't be `kubectl cp`'d into — worked around with a
+  disposable `busybox` pod mounting the same claim). See
+  [ADR-0005](docs/adr/0005-own-agentic-memory-corpus.md).
+
+  Task 5: `voice-agent/` — push-to-talk client (Google Cloud
+  Speech-to-Text → A2A `message/send` → Google Cloud Text-to-Speech) talking
+  to a new `voice-router` kagent Agent that has no MCP tools of its own,
+  only three other Agents as tools (`k8s-agent`, `retrieval-agent`,
+  `xray-agent`) — kagent's Agent-as-tool mechanism *is* A2A delegation, so
+  this is real delegation, not a mock of it.

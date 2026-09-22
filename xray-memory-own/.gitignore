@@ -1,0 +1,4 @@
+# den-vasyliev/xray-memory is a PRIVATE repo -- never let its source land
+# in this (public-ish) repo's history.
+repo/
+bin/
