@@ -110,3 +110,54 @@ kagent Agent, which has no MCP tools of its own -- every "tool" is
 `k8s-agent`, `retrieval-agent` or `xray-agent` as an `Agent`-type tool
 entry, i.e. kagent's own Agent-as-tool mechanism, which *is* A2A
 delegation, not a wrapper around it. See `voice-agent/README.md`.
+
+### Voice delegation latency (measured, 2026-09-22)
+
+Asked (spoken, Ukrainian): "які зараз deployment запущено на кубернетес
+кластер" ("what deployments are currently running in the kubernetes
+cluster"). Routed correctly: `voice-router` delegated to `k8s-agent`
+(the right choice -- this is cluster state, not code or vector-store
+content). The spoken reply was accurate.
+
+**Also found first**: `k8s-agent` and `retrieval-agent` were still
+silently on `default-model-config` (the never-real OpenAI placeholder
+key) on this cluster -- the first voice attempt failed with a live
+`401 Unauthorized` from `api.openai.com`. The fix from ADR-0003
+(point built-in agents at `local-chat-model`) has to be re-applied on
+every fresh cluster; wasn't declared in `releases/` yet on this branch,
+only kubectl-patched by hand on the earlier one. Fixed properly this
+time: added the same `k8s-agent` postRenderer patch to
+`releases/kagent.yaml` and pointed `agent-retrieval.yaml` at
+`local-chat-model` directly, committed and published (`abox` fork,
+`feat/xray-memory`, tag `v0.1.3`) -- not just patched live.
+
+**End-to-end wall clock for one successful voice round-trip: ~16-17
+minutes**, all CPU, `llama-cpp-chat` on `--parallel 1` (one shared slot
+for every agent -- see ADR-0003's reasoning for why that flag is set at
+all):
+
+| Phase | Time | Detail |
+|---|---|---|
+| `voice-router` decides to delegate | ~82s | short turn, routes to `k8s-agent` |
+| `k8s-agent`'s own turn (prompt + tool calls + its answer) | ~14m 37s | wall clock from "Tool execution started" to "completed"; the model's own reported per-task `total time` (234s) is much smaller, meaning this wasn't one LLM call but several internal rounds (k8s-agent doing its own tool-calling to read the cluster) |
+| `voice-router` summarizes for TTS | ~67s | 290-token prompt (much shorter, mostly the tool result), 215 tokens generated at 4.13 tok/s (faster than the other legs -- shorter context to attend over) |
+
+Also observed, not yet root-caused: **several earlier attempts from the
+same session queued up** on the single model slot before this one
+completed -- multiple `contextID`s each with their own
+`k8s-agent` delegation in flight, adding up to well over 40 minutes of
+queued work ahead of the eventually-successful request. Restarting
+`llama-cpp-chat` (`kubectl rollout restart`) cleared the backlog and let
+one clean attempt run start to finish in the ~16-17 minutes above. Worth
+a real fix later (single client-side request in flight at a time?
+cancel-on-retry? a queue-depth guard in the A2A client?) -- out of scope
+to chase tonight, noted here so it isn't lost.
+
+**Conclusion**: correctness held up end to end -- right routing decision,
+right delegate, accurate spoken answer -- but ~17 minutes (clean run) to
+tens of minutes (with a queued backlog) is not a usable voice UX on this
+hardware with this model. Same root cause as ADR-0004's finding
+(small CPU model, real tool-calling overhead), now compounded by
+multi-hop delegation each paying its own full prompt-processing tax.
+A faster model, GPU acceleration, or fewer delegation hops per answer
+would each independently help; none attempted here.
