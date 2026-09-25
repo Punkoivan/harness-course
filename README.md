@@ -114,3 +114,17 @@ Notes, proofs, and everything done during the harness instrumentation course
   only three other Agents as tools (`k8s-agent`, `retrieval-agent`,
   `xray-agent`) — kagent's Agent-as-tool mechanism *is* A2A delegation, so
   this is real delegation, not a mock of it.
+- **2026-09-25** — o11y lab: `abox` from `feat/otel-demo` (OpenTelemetry
+  Demo + MLflow/Phoenix), moved from the ThinkPad to the MacBook (arm64).
+  Forked to `Punkoivan/abox@feat/otel-demo`; the cluster reconciles from the
+  fork's own `ghcr.io/punkoivan/abox/releases-otel-demo` artifact. Getting it
+  up took: iptables kube-proxy (rootless Docker in lima), inotify limits,
+  multi-arch rebuilds of amd64-only images in fork CI, SOPS for secrets,
+  dropping ngrok/triage/xray, and a local Qwen3-4B behind agentgateway-llm
+  instead of Gemini. Main findings: on a fresh cluster **every** trace was
+  dropped (MLflow 404 on hardcoded experiment ids, Phoenix auth rejecting
+  all OTLP) with nothing alerting; a 50% payment failure showed 0 error
+  traces (root span is Locust's, never marked error); metrics/logs have no
+  backend at all. Task 3: kagent + gateway traces in Phoenix exposed a wrong
+  agent answer (tool returned 27 pods, model said 30) and put 92% of a 171s
+  turn on one LLM prefill. Full notes: [`o11y-lab/README.md`](o11y-lab/README.md).
