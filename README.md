@@ -127,4 +127,5 @@ Notes, proofs, and everything done during the harness instrumentation course
   traces (root span is Locust's, never marked error); metrics/logs have no
   backend at all. Task 3: kagent + gateway traces in Phoenix exposed a wrong
   agent answer (tool returned 27 pods, model said 30) and put 92% of a 171s
-  turn on one LLM prefill. Full notes: [`o11y-lab/README.md`](o11y-lab/README.md).
+  turn on one LLM prefill. Full notes: [`o11y-lab/README.md`](o11y-lab/README.md);
+  decisions: [ADR-0006](docs/adr/0006-o11y-lab-abox-fork.md).
